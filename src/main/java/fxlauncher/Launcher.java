@@ -53,8 +53,6 @@ public class Launcher extends Application {
                 try {
                     if (Application.class.isAssignableFrom(appClass)) {
                         app = appClass.newInstance();
-                    } else {
-                        throw new IllegalArgumentException(String.format("Supplied appClass %s was not a subclass of javafx.application.Application!", appClass));
                     }
                 } catch (Throwable t) {
                     reportError("Error creating app class", t);
