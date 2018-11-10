@@ -15,6 +15,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -22,8 +23,10 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 @SuppressWarnings("unchecked")
 public class Launcher extends Application {
@@ -120,6 +123,14 @@ public class Launcher extends Application {
     public void init() throws Exception {
         Iterator<UIProvider> providers = ServiceLoader.load(UIProvider.class).iterator();
         uiProvider = providers.hasNext() ? providers.next() : new DefaultUIProvider();
+
+        String filename = System.getProperty("java.io.tmpdir") + File.separator + "fxlauncher.log";
+        if (getParameters().getNamed().containsKey("logfile"))
+            filename = getParameters().getNamed().get("logfile");
+        System.out.println("logging to " + filename);
+        FileHandler handler = new FileHandler(filename);
+        handler.setFormatter(new SimpleFormatter());
+        log.addHandler(handler);
     }
 
     public void start(Stage primaryStage) throws Exception {
@@ -242,8 +253,9 @@ public class Launcher extends Application {
             // Start any executable jar (i.E. Spring Boot);
             String firstFile = superLauncher.getManifest().files.get(0).file;
             log.info(String.format("No app class defined, starting first file (%s)", firstFile));
-            Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
-            String command = String.format("java -jar %s/%s", cacheDir.toAbsolutePath(), firstFile);
+            Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed()).toAbsolutePath();
+            Path javaPath = cacheDir.getParent().getParent().resolve("runtime").resolve("bin").toAbsolutePath();
+            String command = String.format("%s/%s -Xmx640m -Xms256m -jar %s/%s", javaPath, "java", cacheDir, firstFile);
             log.info(String.format("Execute command '%s'", command));
             Runtime.getRuntime().exec(command);
         }
