@@ -8,10 +8,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class CreateManifest {
@@ -136,11 +134,39 @@ public class CreateManifest {
         if(!manifest.uri.getPath().endsWith("/")) {
             manifest.uri = new URI(String.format("%s/", baseURI.toString()));
         }
+
+        //treesets to hold paths alphabetically
+        TreeSet<Path> paths = new TreeSet<>(new Comparator<Path>() {
+
+            @Override
+            public int compare(Path o1, Path o2) {
+                if(o1.getNameCount() != o2.getNameCount()){
+                    return o1.getNameCount() - o2.getNameCount();
+                }
+                if(o1.toString().endsWith(".jar") && !o2.toString().endsWith(".jar")){
+                    return -1;
+                }
+                if(!o1.toString().endsWith(".jar") && o2.toString().endsWith(".jar")){
+                    return 1;
+                }
+                return o1.compareTo(o2);
+            }
+        });
+
         Files.walkFileTree(appPath, new SimpleFileVisitor<Path>() {
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (!Files.isDirectory(file) && shouldIncludeInManifest(file) && !file.getFileName().toString().startsWith("fxlauncher"))
-                    manifest.files.add(new LibraryFile(appPath, file));
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                paths.add(file);
                 return FileVisitResult.CONTINUE;
+            }
+        });
+
+        paths.forEach(file -> {
+            if (!Files.isDirectory(file) && shouldIncludeInManifest(file) && !file.getFileName().toString().startsWith("fxlauncher")) {
+                try {
+                    manifest.files.add(new LibraryFile(appPath, file));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
